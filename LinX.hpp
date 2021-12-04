@@ -81,7 +81,7 @@ public:
     {
         p.WriteToPipe("a\r\nTEST\r\n1\r\n" + std::to_string(probSize) + "\r\n" + std::to_string(probSize) + "\r\n" + std::to_string(trial) + "\r\n4\r\n");
         help_sleep(300);
-        std::cout << p.ReadFromPipe();
+        p.ReadFromPipe();
         std::cout << "Size   LDA    Align. Time(s)    GFlops   Residual     Residual(norm) Check\n";
         return std::move(p);
     }
