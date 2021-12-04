@@ -8,10 +8,21 @@ class Core
 {
 private:
     uint64_t affinity;
+    int index;
 public:
-    Core() : affinity((uint64_t) -1) {};
+    Core() : affinity((uint64_t) -1), index{-1} {};
     
-    Core(const Core& src) : affinity(src.affinity) {};
+    Core(const Core& src) : affinity(src.affinity), index{-1} {};
+
+    void setIndex(int i)
+    {
+        index = i;
+    }
+
+    int getIndex()
+    {
+        return index;
+    }
 
     Core &operator=(const Core &src)
     {
@@ -58,6 +69,7 @@ public:
     template<typename T>
     Core(T t)
     {
+        index = -1;
         affinity = 1;
         affinity = affinity << t;
     }
@@ -65,6 +77,7 @@ public:
     template<typename T, typename... types>
     Core(T t, types... vals)
     {
+        index = -1;
         affinity = 1;
         affinity = affinity << t;
         affinity |= Core{vals...}.affinity;

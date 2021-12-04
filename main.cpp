@@ -1,7 +1,17 @@
 #include <iostream>
 #include <limits>
+#include <time.h>
 #include "core.hpp"
 #include "LinX.hpp"
+
+void printTime()
+{
+    time_t curTime = time(nullptr);
+    struct tm *pLocal = localtime(&curTime);
+    printf("(%04d-%02d-%02d %02d:%02d:%02d)",  
+    pLocal->tm_year + 1900, pLocal->tm_mon + 1, pLocal->tm_mday,  
+    pLocal->tm_hour, pLocal->tm_min, pLocal->tm_sec);
+}
 
 using std::cout, std::cin, std::string;
 
@@ -38,7 +48,7 @@ bool isEqualEps(double lhs, double rhs)
 {
     const double eps = std::numeric_limits<double>::epsilon();
     const double diff = lhs - rhs;
-    if(diff > eps || diff < eps) return false;
+    if(diff > eps || diff < -eps) return false;
     return true;
 }
 
@@ -85,6 +95,7 @@ int main(int argc, char **argv)
         {
             cin >> mode;
             cores[i] = Core{2 * mode, 2 * mode + 1};
+            cores[i].setIndex(mode);
         }
     }
 
@@ -97,7 +108,17 @@ int main(int argc, char **argv)
     double beforeResidual;
     for(int i = 0; i < coresLength; ++i)
     {
-        cout << "Test " << i << "\n";
+        printTime();
+        int idx = cores[i].getIndex(); 
+        if(idx != -1)
+        {
+            cout << " Core " << idx << " Test\n";
+        }
+        else
+        {
+            cout << " Test " << i << "\n";
+        }
+        
         auto r = cores[i].run(p);
         for(int j = 0; j < iter; ++j)
         {
@@ -129,6 +150,7 @@ int main(int argc, char **argv)
     }
     
     if(mode == -1) cout << "ERROR!\n";
+    else cout << "Success!!!\n";
     delete[] cores;
     return 0;
 }
