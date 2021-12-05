@@ -3,6 +3,7 @@
 #include <time.h>
 #include "core.hpp"
 #include "LinX.hpp"
+#include "cpu_info.h"
 
 void printTime()
 {
@@ -52,105 +53,139 @@ bool isEqualEps(double lhs, double rhs)
     return true;
 }
 
+bool LinXTest(Core c, int thread, int probSize, int iter, LinX::Instruction inst)
+{
+    LinX l{probSize, iter, thread, inst};
+    Program<LinX> p{l};
+    double residual, beforeResidual;
+    auto r = c.run(p);
+    for(int j = 0; j < iter; ++j)
+    {
+        while(true)
+        {
+            help_sleep(300);
+            double time, gflop;
+            int result = r.parseResult(time, gflop, residual);
+            if(result == 1) break;
+            if(result == -1)
+            {
+                return false;
+            }
+        }
+        if(j == 0)
+        {
+            beforeResidual = residual;
+            continue;
+        }
+        if(!isEqualEps(beforeResidual, residual))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 int main(int argc, char **argv)
 {
-    int numCore = getInt("Core Count: ");
+    if(CPU_Info::isHybridCPU())
+    {
+        cout << "Maybe You Use AlderLake\n";
+    }
+
+    auto affinities = CPU_Info::getCoreAffinities();
+    int numCore = affinities.size();
+    int numThread = 0;
+    
+    std::vector<Core> cores{};
+
+    for(int i = 0; i < numCore; ++i)
+    {
+        Core c;
+        c = affinities[i];
+        c.setIndex(i);
+        numThread += c.threadCount();
+        cores.push_back(c);
+    }
+
+    cout << "Core: " << numCore << "\n";
+    Core allCore{};
+
     int iter = getInt("Iteration per Core: ");
     int probSize = getInt("Problem Size: ");
     LinX::Instruction inst = getInst();
 
     int mode;
     cout << "Mode 1: Test All Core at Same Time\n";
-    cout << "Mode 2: Test All Core One by One\n";
-    cout << "Mode 3: Test Specific Cores\n";
+    cout << "Mode 2: Test Thread Usage\n";
+    cout << "Mode 3: Test All Core One by One\n";
+    cout << "Mode 4: Test Specific Cores\n";
     do
     {
-        cout << "(1 ~ 3): ";
+        cout << "(1 ~ 4): ";
         cin >> mode;
-    } while (mode < 1 || mode > 3);
+    } while (mode < 1 || mode > 4);
     
-    Core *cores;
-    int coresLength;
-    LinX l{probSize, iter, (mode == 1 ? numCore * 2 : 2), inst};
-    Program<LinX> p{l};
+    int buff;
+    std::vector<int> testedCore{};
     
     if(mode == 1)
     {
-        cores = new Core[1]{};
-        coresLength = 1;
+        buff = numThread;   
     }
     else if(mode == 2)
     {
-        cores = new Core[numCore];
-        for(int i = 0; i < numCore; ++i) cores[i] = Core{2 * i, 2 * i + 1};
-        coresLength = numCore;
+        cout << "Thread Number: ";
+        cin >> buff;
     }
-    else
+    else if(mode == 3)
     {
-        cout << "How Much Cores Are You Testing?: ";
-        cin >> coresLength;
-        cout << "Please Input Core Nums \n";
-        cores = new Core[coresLength]{};
-        for(int i = 0; i < coresLength; ++i)
+        for(int i = 0; i < numCore; ++i)
         {
-            cin >> mode;
-            cores[i] = Core{2 * mode, 2 * mode + 1};
-            cores[i].setIndex(mode);
+            testedCore.push_back(i);
+        }
+    }
+    else if(mode == 4)
+    {
+        int t;
+        cout << "How Much Cores Are You Testing?: ";
+        cin >> t;
+        cout << "Please Input Core Nums \n";
+        for(int i = 0; i < t; ++i)
+        {
+            cin >> buff;
+            testedCore.push_back(buff);
         }
     }
 
-    cout << "Start Test\n";
-    mode = 0;
-    int result;
-    double time;
-    double gflop;
-    double residual;
-    double beforeResidual;
-    for(int i = 0; i < coresLength; ++i)
+    if(mode <= 2)
     {
-        printTime();
-        int idx = cores[i].getIndex(); 
-        if(idx != -1)
+        if(LinXTest(allCore, buff, probSize, iter, inst))
         {
-            cout << " Core " << idx << " Test\n";
+            cout << "Success!!!\n";
         }
         else
         {
-            cout << " Test " << i << "\n";
+            cout << "Fail!!!\n";
         }
-        
-        auto r = cores[i].run(p);
-        for(int j = 0; j < iter; ++j)
+    }
+    else
+    {
+        int testTime = testedCore.size();
+        for(int i = 0; i < testTime; ++i)
         {
-            while(true)
+            int idx = testedCore[i];
+            printTime();
+            cout << " Core " << idx << " Test\n";
+            if(LinXTest(cores[idx], cores[idx].threadCount(), probSize, iter, inst))
             {
-                help_sleep(300);
-                
-                result = r.parseResult(time, gflop, residual);
-                if(result == 1) break;
-                if(result == -1)
-                {
-                    mode = -1;
-                    break;
-                }
+                cout << "Success!!!\n";
             }
-            if(mode == -1) break;
-            if(j == 0)
+            else
             {
-                beforeResidual = residual;
-                continue;
-            }
-            if(!isEqualEps(beforeResidual, residual))
-            {
-                mode = -1;
+                cout << "Fail!!!\n";
                 break;
             }
         }
-        if(mode == -1) break;
     }
-    
-    if(mode == -1) cout << "ERROR!\n";
-    else cout << "Success!!!\n";
-    delete[] cores;
     return 0;
 }

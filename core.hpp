@@ -3,6 +3,8 @@
 #include "process_library.h"
 #include "program.hpp"
 #include "process.hpp"
+#include <bitset>
+
 
 class Core
 {
@@ -19,6 +21,12 @@ public:
         index = i;
     }
 
+    int threadCount()
+    {
+        std::bitset<64> b{affinity};
+        return b.count();
+    }
+
     int getIndex()
     {
         return index;
@@ -27,6 +35,12 @@ public:
     Core &operator=(const Core &src)
     {
         affinity = src.affinity;
+        return *this;
+    }
+
+    Core &operator=(const uint64_t src)
+    {
+        affinity = src;
         return *this;
     }
 

@@ -3,4 +3,4 @@ project(CoreTest)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable (testLinx main.cpp process_library.cpp)
+add_executable (testLinx main.cpp process_library.cpp cpu_info.cpp)
